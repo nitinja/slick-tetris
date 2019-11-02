@@ -1,15 +1,17 @@
 import {useEffect, useReducer, useCallback} from 'react'
-import {Piece, Position} from '../models/Piece'
+import {Piece, Position, Action} from '../models/model'
 
 export interface MatrixState {
   blockMatrix: number[][]
   currentOutputMatrix: number[][] | null
   activePiece?: Piece | null
   activePiecePosition: Position
+  completedRowsCount: number
+  readyForNewPiece: boolean
   matrixFull: boolean
 }
 
-const reducer = (state: MatrixState, action: any): MatrixState => {
+const reducer = (state: MatrixState, action: Action): MatrixState => {
   switch (action.type) {
     case 'ADD_PIECE':
       const piece: Piece = action.payload
@@ -19,32 +21,39 @@ const reducer = (state: MatrixState, action: any): MatrixState => {
         ...state,
         activePiece: piece,
         activePiecePosition: defaultPosition,
+        readyForNewPiece: false,
         currentOutputMatrix: getCombinedMatrix(state.blockMatrix, piece ? piece.blocks : [], defaultPosition),
       }
     case 'MERGE_PIECE_IN_MATRIX':
-      console.log('piece merged!')
-      return {
-        ...state,
-        activePiece: null,
-        activePiecePosition: {row: 0, column: 0},
-        blockMatrix: getCombinedMatrix(
-          state.blockMatrix,
-          state.activePiece ? state.activePiece.blocks : [],
-          state.activePiecePosition,
-        ),
-      }
-    case 'ERASE_COMPLETED_LINES_IN_MATRIX':
-      const matrixWithIncompleteLines = eraseCompletedLinesFromMatrix(state.blockMatrix)
-      if (!matrixWithIncompleteLines) {
-        return state
+      let mergedMatrix = getCombinedMatrix(
+        state.blockMatrix,
+        state.activePiece ? state.activePiece.blocks : [],
+        state.activePiecePosition,
+      )
+      /* See if there are completed lines and erase those completed lines */
+      const completedRows = mergedMatrix.filter(row => row.every(item => item === 1))
+      if (completedRows.length) {
+        mergedMatrix = eraseCompletedLinesFromMatrix(mergedMatrix)
       }
       return {
         ...state,
         activePiece: null,
         activePiecePosition: {row: 0, column: 0},
-        blockMatrix: matrixWithIncompleteLines,
-        currentOutputMatrix: matrixWithIncompleteLines,
+        blockMatrix: mergedMatrix,
+        currentOutputMatrix: mergedMatrix,
+        readyForNewPiece: true,
+        completedRowsCount: completedRows.length,
       }
+    // case 'ERASE_COMPLETED_LINES_IN_MATRIX':
+    //   if (!matrixWithIncompleteLines) {
+    //     return state
+    //   }
+
+    //   return {
+    //     ...state,
+    //     blockMatrix: matrixWithIncompleteLines,
+    //     currentOutputMatrix: matrixWithIncompleteLines,
+    //   }
     case 'MOVE_PIECE_TO_LEFT':
       const activePiecePositionLeft = {row: state.activePiecePosition.row, column: state.activePiecePosition.column - 1}
       return {
@@ -88,10 +97,19 @@ const reducer = (state: MatrixState, action: any): MatrixState => {
         matrixFull: true,
       }
     case 'ROTATE_PIECE':
+      // debugger
       const rotatedBlockMatrix = action.payload
+      const activePiece = state.activePiece
+        ? {
+            ...state.activePiece,
+            blocks: rotatedBlockMatrix,
+            currentRows: rotatedBlockMatrix.length,
+            currentColumns: rotatedBlockMatrix[0].length,
+          }
+        : null
       return {
         ...state,
-        activePiece: state.activePiece ? {...state.activePiece, blocks: rotatedBlockMatrix} : null,
+        activePiece,
         currentOutputMatrix: getCombinedMatrix(state.blockMatrix, rotatedBlockMatrix, state.activePiecePosition),
       }
     default:
@@ -124,34 +142,33 @@ const getCombinedMatrix = (containerMatrix: number[][], childMatrix: number[][],
   return _containerMatrix
 }
 
-const eraseCompletedLinesFromMatrix = (containerMatrix: number[][]): number[][] | null => {
-  const completedRows = containerMatrix.filter(row => row.every(item => item === 1))
-  if (!completedRows.length) {
-    return null
-  }
-
-  /* create a copy */
-  //  let _containerMatrix = getMatrixCopy(containerMatrix)
-
+const eraseCompletedLinesFromMatrix = (containerMatrix: number[][]): number[][] => {
   /* get all incomplete lines */
-  const emptyRows = getEmptyMatrix(completedRows.length, completedRows[0].length)
-  const uncomlpetedMatrix = containerMatrix.filter(row => row.some(item => item === 0))
+  // debugger
+  const incompleteLineMatrix = containerMatrix.filter(row => row.some(item => item === 0))
+  if (incompleteLineMatrix.length < containerMatrix.length) {
+    const linesToadd = containerMatrix.length - incompleteLineMatrix.length
+    const emptyRows = getEmptyMatrix(linesToadd, incompleteLineMatrix[0].length)
 
-  /* Return merged matrix. Its same as pushing empty lines on the top */
-  return emptyRows.concat(uncomlpetedMatrix)
+    /* Return merged matrix. Its same as pushing empty lines on the top */
+    return emptyRows.concat(incompleteLineMatrix)
+  }
+  return incompleteLineMatrix
 }
 
 const getMatrixCopy = (containerMatrix: number[][]) => containerMatrix.map(row => row.map(col => col))
 
 /* Custom Hook */
 
-export const useTetrisMatrix = (rows: number, columns: number, activePieceMergedCallback: () => void): any => {
+export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixFullCallback = () => {}): any => {
   const initialState: MatrixState = {
     blockMatrix: getEmptyMatrix(rows, columns),
     currentOutputMatrix: getEmptyMatrix(rows, columns),
     activePiece: undefined,
     activePiecePosition: {row: 0, column: 0},
+    completedRowsCount: 0,
     matrixFull: false,
+    readyForNewPiece: false,
   }
 
   const [state, dispatch] = useReducer(reducer, initialState)
@@ -186,23 +203,6 @@ export const useTetrisMatrix = (rows: number, columns: number, activePieceMerged
     [columns, rows, state.blockMatrix],
   )
 
-  // const isThereSpaceForPieceBlock = useCallback((pieceBlock: number[][], position: {row: number, column: number}) => {
-  //   if (!state.activePiece || state.activePiecePosition.row + state.activePiece.currentRows >= rows) {
-  //     return false
-  //   }
-  //   const rowToBeChecked = state.blockMatrix[state.activePiecePosition.row + state.activePiece.currentRows]
-  //   const lastRowOfPiece = state.activePiece.blocks[state.activePiece.blocks.length - 1]
-
-  //   const pieceColumnStartIndex = state.activePiecePosition.column
-  //   const pieceColumnEndIndex = state.activePiecePosition.column + state.activePiece.currentColumns
-
-  //   const isSpaceAvailableBelow = rowToBeChecked
-  //     .slice(pieceColumnStartIndex, pieceColumnEndIndex)
-  //     .every((value, index) => lastRowOfPiece[index] === 0 || value !== 1)
-
-  //   return isSpaceAvailableBelow
-  // }, [rows, state.activePiece, state.activePiecePosition.column, state.activePiecePosition.row, state.blockMatrix])
-
   const moveCurrentPieceDown = useCallback((): boolean => {
     /* If this is last row, or if there is no space below for this piece, return false i.e. fail*/
     if (!state.activePiece) {
@@ -219,68 +219,36 @@ export const useTetrisMatrix = (rows: number, columns: number, activePieceMerged
     } else {
       /* If there is no space left below, combine piece with blockMatrix */
       dispatch({type: 'MERGE_PIECE_IN_MATRIX'})
-      dispatch({type: 'ERASE_COMPLETED_LINES_IN_MATRIX'})
-
-      if (activePieceMergedCallback) {
-        activePieceMergedCallback()
-      }
-      /* See if there are completed lines and erase those completed lines */
     }
     return true
-  }, [
-    activePieceMergedCallback,
-    isThereSpaceForPieceBlock,
-    state.activePiece,
-    state.activePiecePosition.column,
-    state.activePiecePosition.row,
-  ])
+  }, [isThereSpaceForPieceBlock, state.activePiece, state.activePiecePosition.column, state.activePiecePosition.row])
 
-  /* start timer to move current piece */
-  useEffect(() => {
-    const pieceDropInterval = setInterval(() => {
-      moveCurrentPieceDown()
-    }, 1000)
-    return () => {
-      clearInterval(pieceDropInterval)
-    }
-  }, [moveCurrentPieceDown])
-
-  const addPiece = (piece: Piece) => {
-    if (isThereSpaceAvailableForNewPiece(piece)) {
-      dispatch({type: 'ADD_PIECE', payload: piece})
-      return
-    }
-    dispatch({type: 'MATRIX_FULL', payload: piece})
-  }
-
-  const isThereSpaceAvailableForNewPiece = (piece: Piece): boolean => {
-    const startColumn = piece.currentColumns === 3 || piece.currentColumns === 4 ? 4 : 5
-    const endColumn = startColumn + piece.currentColumns
-    for (let row = 0; row < piece.currentRows; row++) {
-      for (let col = startColumn; col < endColumn; col++) {
-        if (state.blockMatrix[row][col] === 1) {
-          return false
+  const addPiece = useCallback(
+    (piece: Piece) => {
+      const isThereSpaceAvailableForNewPiece = (piece: Piece): boolean => {
+        const startColumn = piece.currentColumns === 3 || piece.currentColumns === 4 ? 4 : 5
+        const endColumn = startColumn + piece.currentColumns
+        for (let row = 0; row < piece.currentRows; row++) {
+          for (let col = startColumn; col < endColumn; col++) {
+            if (state.blockMatrix[row][col] === 1) {
+              return false
+            }
+          }
         }
+
+        return true
       }
-    }
-
-    return true
-  }
-
-  /* Is there a space for any given piece at given position in matrix? */
-  // const isThereSpaceAvailableForPiece = (piece: Piece): boolean => {
-  //   const startColumn = piece.currentColumns
-  //   const endColumn = startColumn + piece.currentColumns
-  //   for (let row = 0; row < piece.currentRows; row++) {
-  //     for (let col = startColumn; col < endColumn; col++) {
-  //       if (state.blockMatrix[row][col] === 1) {
-  //         return false
-  //       }
-  //     }
-  //   }
-
-  //   return true
-  // }
+      // debugger
+      if (isThereSpaceAvailableForNewPiece(piece)) {
+        dispatch({type: 'ADD_PIECE', payload: piece})
+        return
+      }
+      /* Matrix is full, call the callback */
+      dispatch({type: 'MATRIX_FULL', payload: piece})
+      matrixFullCallback()
+    },
+    [matrixFullCallback, state.blockMatrix],
+  )
 
   const moveCurrentPieceLeft = () => {
     /* If this is first column, return false i.e. fail*/
@@ -306,7 +274,7 @@ export const useTetrisMatrix = (rows: number, columns: number, activePieceMerged
       return false
     }
     // check if there is a space to right for this piece
-    const columnToBeChecked = state.activePiecePosition.column + state.activePiece.currentColumns
+    const columnToBeChecked = state.activePiecePosition.column + state.activePiece.currentColumns - 1
     const pieceRowStart = state.activePiecePosition.row
     const pieceRowEnd = state.activePiecePosition.row + state.activePiece.currentRows - 1
     for (let row = pieceRowStart; row <= pieceRowEnd; row++) {

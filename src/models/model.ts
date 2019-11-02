@@ -11,6 +11,11 @@ export interface Position {
   column: number
 }
 
+export interface Action {
+  type: string
+  payload?: any
+}
+
 /* Emulated enum for Piece type, since TS does not support object values in enum */
 export class PieceType {
   static readonly O_SHAPE = new PieceType('O_SHAPE', 'A square piece', [[1, 1], [1, 1]], 2, 2)

@@ -1,5 +1,5 @@
 import React from 'react'
-import {Piece} from '../models/Piece'
+import {Piece} from '../models/model'
 
 interface Props {
   piece: Piece

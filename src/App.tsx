@@ -30,7 +30,7 @@ const App: React.FC = () => {
       </div>
       <title>Tetris 0.0.1</title>
       <div css={{flex: 1}}>
-        <Tetris rows={20} columns={10}></Tetris>
+        <Tetris rows={10} columns={5}></Tetris>
       </div>
       <div
         css={{
