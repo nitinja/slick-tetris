@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect} from 'react'
+import React, {useState, useCallback, useEffect, useReducer} from 'react'
 import {PieceType, createRandomPiece, Piece} from '../models/Piece'
 import {useTetrisMatrix, MatrixState} from './tetris-matrix'
 
@@ -11,10 +11,34 @@ interface TetrisProps {
   columns?: number
 }
 
+interface GameState {
+  isGameRunning: boolean
+  isGamePaused: boolean
+  isGameOver: boolean
+  score: number
+  timeElapsedSeconds: number
+}
+
+const initialGameState = {
+  isGameRunning: false,
+  isGamePaused: false,
+  isGameOver: false,
+  score: 0,
+  timeElapsedSeconds: 0,
+}
+
+const reducer = (state: GameState, action: any) => {
+  switch (action.type) {
+  }
+  return state
+}
+
 const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
   const activePieceMergedCallback = () => {
     addFrontBlockFromQueue()
   }
+
+  const [gameState, dispatchGameState] = useReducer(reducer, initialGameState)
   const [state, addPiece, moveCurrentPieceLeft, moveCurrentPieceRight, moveCurrentPieceDown, rotatePiece]: [
     MatrixState,
     (piece: Piece) => void,
@@ -36,6 +60,10 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
       addPiece(frontPieceFormQueue)
       setRandomPiecesQueue([createRandomPiece(), ...randomPiecesQueue])
     }
+  }
+
+  const startNewGame = () => {
+    dispatchGameState({type: 'START_NEW_GAME'})
   }
   const onKeyDown = useCallback(
     (e: any) => {
@@ -107,18 +135,27 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
               )),
             )}
         </div>
-        <div css={{border: '1px solid #ccc', textAlign: 'center'}}>
-          <button onClick={addFrontBlockFromQueue} css={{marginBottom: 20, marginTop: 20}}>
-            Start
-          </button>
-          <div css={{display: 'flex', flexDirection: 'column-reverse'}}>
+        <div
+          css={{
+            border: '1px solid #ccc',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div css={{display: 'flex', flexDirection: 'column-reverse', paddingTop: '1rem'}}>
             {randomPiecesQueue && randomPiecesQueue.map((piece, index) => <TetrisPiece key={index} piece={piece} />)}
+            <div css={{fontSize: '0.5rem', marginBottom: '1rem'}}>NEXT</div>
+          </div>
+          <div css={{display: 'flex', flexDirection: 'column-reverse'}}>
+            <div></div>
           </div>
         </div>
         <div css={{border: '1px solid #ccc'}}>Score</div>
         <div css={{border: '1px solid #ccc'}}>Time</div>
       </div>
-      {state.matrixFull && (
+      {!gameState.isGameRunning && (
         <div css={{position: 'absolute', top: 0, left: 0, height: '100%', width: '100%'}}>
           <div
             css={{
@@ -128,9 +165,15 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
               width: '100%',
               justifyContent: 'center',
               alignItems: 'center',
+              backgroundColor: 'rgba(179, 179, 179, 0.4)',
             }}
           >
-            GAME OVER!
+            {gameState.isGameOver ? 'GAME OVER!' : null}
+            {!gameState.isGameRunning && !gameState.isGamePaused ? (
+              <button onClick={startNewGame} css={{marginBottom: 20, marginTop: 20}}>
+                : NEW GAME :
+              </button>
+            ) : null}
           </div>
         </div>
       )}
