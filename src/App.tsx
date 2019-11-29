@@ -26,25 +26,24 @@ const App: React.FC = () => {
           justifyContent: 'flex-end',
         }}
       >
-        Tetris Game by &nbsp;<a href="http://nitinj.com">Nitin Jadhav</a>
+        SLICK TETRIS 0.1
       </div>
-      <title>Tetris 0.0.1</title>
       <div css={{flex: 1}}>
-        <Tetris rows={10} columns={5}></Tetris>
+        <Tetris rows={20} columns={10}></Tetris>
       </div>
       <div
         css={{
-          height: 20,
-          color: '#FFF',
-          backgroundColor: '#CCC',
-          fontWeight: 'bold',
+          color: '#ccc',
+          // borderTop: '1px solid #CCC',
+          backgroundColor: '#eeeeee47',
+          fontWeight: 'normal',
           padding: 4,
           display: 'flex',
           justifyContent: 'flex-end',
         }}
       >
         <span aria-label="peace" role="img">
-          🌿
+          a game by &nbsp;<a href="http://nitinj.com">NJ</a> 🌿
         </span>
       </div>
     </div>

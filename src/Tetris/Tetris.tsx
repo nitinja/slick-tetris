@@ -233,7 +233,6 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
         </div>
         <div css={{fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
           {`${Math.floor(gameState.timeElapsedSeconds / 60)}:${gameState.timeElapsedSeconds % 60}`}
-          {/* {gameState.timeElapsedSeconds} */}
         </div>
       </div>
       {!gameState.isGameRunning && (

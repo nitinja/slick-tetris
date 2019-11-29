@@ -16,6 +16,23 @@ export interface Action {
   payload?: any
 }
 
+export interface Block {
+  key: string
+  color: BlockColor
+  effect: BlockEffectType
+}
+
+export enum BlockEffectType {
+  GLOW = '',
+  SEMITRANSPARENT = '',
+}
+
+export enum BlockColor {
+  GREEN = '',
+  RED = '',
+  YELLOW = '',
+}
+
 /* Emulated enum for Piece type, since TS does not support object values in enum */
 export class PieceType {
   static readonly O_SHAPE = new PieceType('O_SHAPE', 'A square piece', [[1, 1], [1, 1]], 2, 2)
