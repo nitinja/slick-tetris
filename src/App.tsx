@@ -1,5 +1,4 @@
 import React from 'react'
-import logo from './logo.svg'
 import './App.css'
 import Tetris from './Tetris/Tetris'
 /** @jsx jsx */
@@ -29,7 +28,7 @@ const App: React.FC = () => {
         SLICK TETRIS 0.1
       </div>
       <div css={{flex: 1}}>
-        <Tetris rows={20} columns={10}></Tetris>
+        <Tetris rows={10} columns={10}></Tetris>
       </div>
       <div
         css={{

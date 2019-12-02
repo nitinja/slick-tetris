@@ -1,9 +1,9 @@
-import {useEffect, useReducer, useCallback} from 'react'
-import {Piece, Position, Action} from '../models/model'
+import {useReducer, useCallback, useRef} from 'react'
+import {Piece, Position, Action, Block} from '../models/model'
 
 export interface MatrixState {
-  blockMatrix: number[][]
-  currentOutputMatrix: number[][] | null
+  blockMatrix: Block[][]
+  currentOutputMatrix: Block[][] | null
   activePiece?: Piece | null
   activePiecePosition: Position
   completedRowsCount: number
@@ -31,7 +31,7 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
         state.activePiecePosition,
       )
       /* See if there are completed lines and erase those completed lines */
-      const completedRows = mergedMatrix.filter(row => row.every(item => item === 1))
+      const completedRows = mergedMatrix.filter(row => row.every(item => item))
       if (completedRows.length) {
         mergedMatrix = eraseCompletedLinesFromMatrix(mergedMatrix)
       }
@@ -44,16 +44,6 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
         readyForNewPiece: true,
         completedRowsCount: completedRows.length,
       }
-    // case 'ERASE_COMPLETED_LINES_IN_MATRIX':
-    //   if (!matrixWithIncompleteLines) {
-    //     return state
-    //   }
-
-    //   return {
-    //     ...state,
-    //     blockMatrix: matrixWithIncompleteLines,
-    //     currentOutputMatrix: matrixWithIncompleteLines,
-    //   }
     case 'MOVE_PIECE_TO_LEFT':
       const activePiecePositionLeft = {row: state.activePiecePosition.row, column: state.activePiecePosition.column - 1}
       return {
@@ -96,6 +86,10 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
         activePiece: null,
         matrixFull: true,
       }
+    case 'RESET_MATRIX':
+      return {
+        ...action.payload,
+      }
     case 'ROTATE_PIECE':
       // debugger
       const rotatedBlockMatrix = action.payload
@@ -117,18 +111,12 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
   }
 }
 
-const getEmptyMatrix = (rows: number, columns: number): number[][] => {
+const getEmptyMatrix = (rows: number, columns: number): Block[][] => {
   //create empty matrix for Tetris game
-  const _blockMatrix = []
-  for (let i = 0; i < rows; i++) {
-    const rowArray = new Array(columns)
-    rowArray.fill(0)
-    _blockMatrix.push(rowArray)
-  }
-  return _blockMatrix
+  return new Array(rows).fill(new Array(columns).fill(null))
 }
 
-const getCombinedMatrix = (containerMatrix: number[][], childMatrix: number[][], position: Position): number[][] => {
+const getCombinedMatrix = (containerMatrix: Block[][], childMatrix: Block[][], position: Position): Block[][] => {
   const pieceMatrixRows = childMatrix.length,
     pieceMatrixColumns = childMatrix[0].length
 
@@ -142,10 +130,10 @@ const getCombinedMatrix = (containerMatrix: number[][], childMatrix: number[][],
   return _containerMatrix
 }
 
-const eraseCompletedLinesFromMatrix = (containerMatrix: number[][]): number[][] => {
+const eraseCompletedLinesFromMatrix = (containerMatrix: Block[][]): Block[][] => {
   /* get all incomplete lines */
   // debugger
-  const incompleteLineMatrix = containerMatrix.filter(row => row.some(item => item === 0))
+  const incompleteLineMatrix = containerMatrix.filter(row => row.some(item => !item))
   if (incompleteLineMatrix.length < containerMatrix.length) {
     const linesToadd = containerMatrix.length - incompleteLineMatrix.length
     const emptyRows = getEmptyMatrix(linesToadd, incompleteLineMatrix[0].length)
@@ -156,12 +144,12 @@ const eraseCompletedLinesFromMatrix = (containerMatrix: number[][]): number[][] 
   return incompleteLineMatrix
 }
 
-const getMatrixCopy = (containerMatrix: number[][]) => containerMatrix.map(row => row.map(col => col))
+const getMatrixCopy = (containerMatrix: Block[][]) => containerMatrix.map(row => row.map(col => col))
 
 /* Custom Hook */
 
 export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixFullCallback = () => {}): any => {
-  const initialState: MatrixState = {
+  const initialState = useRef({
     blockMatrix: getEmptyMatrix(rows, columns),
     currentOutputMatrix: getEmptyMatrix(rows, columns),
     activePiece: undefined,
@@ -169,12 +157,12 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
     completedRowsCount: 0,
     matrixFull: false,
     readyForNewPiece: false,
-  }
+  })
 
-  const [state, dispatch] = useReducer(reducer, initialState)
+  const [state, dispatch] = useReducer(reducer, initialState.current)
 
   const isThereSpaceForPieceBlock = useCallback(
-    (pieceBlock: number[][], position: Position) => {
+    (pieceBlock: Block[][], position: Position) => {
       if (!pieceBlock) {
         return false
       }
@@ -192,7 +180,7 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
           matrixCol < position.column + pieceCols;
           matrixCol++, pieceCol++
         ) {
-          if (pieceBlock[pieceRow][pieceCol] !== 0 && state.blockMatrix[matrixRow][matrixCol] !== 0) {
+          if (pieceBlock[pieceRow][pieceCol] && state.blockMatrix[matrixRow][matrixCol]) {
             return false
           }
         }
@@ -230,7 +218,7 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
         const endColumn = startColumn + piece.currentColumns
         for (let row = 0; row < piece.currentRows; row++) {
           for (let col = startColumn; col < endColumn; col++) {
-            if (state.blockMatrix[row][col] === 1) {
+            if (state.blockMatrix[row][col]) {
               return false
             }
           }
@@ -240,6 +228,15 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
       }
       // debugger
       if (isThereSpaceAvailableForNewPiece(piece)) {
+        // add keys to block
+        piece.blocks.forEach((row: Block[], rowIndex: number) => {
+          row.forEach((block: Block, colIndex: number) => {
+            if (block) {
+              block.key = `${piece.id}-${rowIndex}-${colIndex}`
+            }
+          })
+        })
+
         dispatch({type: 'ADD_PIECE', payload: piece})
         return
       }
@@ -260,7 +257,7 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
     const pieceRowStart = state.activePiecePosition.row
     const pieceRowEnd = state.activePiecePosition.row + state.activePiece.currentRows - 1
     for (let row = pieceRowStart; row <= pieceRowEnd; row++) {
-      if (state.blockMatrix[row][columnToBeChecked] === 1) {
+      if (state.blockMatrix[row][columnToBeChecked]) {
         return false
       }
     }
@@ -278,7 +275,7 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
     const pieceRowStart = state.activePiecePosition.row
     const pieceRowEnd = state.activePiecePosition.row + state.activePiece.currentRows - 1
     for (let row = pieceRowStart; row <= pieceRowEnd; row++) {
-      if (state.blockMatrix[row][columnToBeChecked] === 1) {
+      if (state.blockMatrix[row][columnToBeChecked]) {
         return false
       }
     }
@@ -302,5 +299,9 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
     }
   }
 
-  return [state, addPiece, moveCurrentPieceLeft, moveCurrentPieceRight, moveCurrentPieceDown, rotatePiece]
+  const resetMatrix = () => {
+    dispatch({type: 'RESET_MATRIX', payload: initialState.current})
+  }
+
+  return [state, addPiece, moveCurrentPieceLeft, moveCurrentPieceRight, moveCurrentPieceDown, rotatePiece, resetMatrix]
 }

@@ -1,7 +1,9 @@
 export interface Piece {
   type: PieceType
   key: string
-  blocks: number[][]
+  id?: number
+  blocks: Block[][]
+  description: string
   currentRows: number
   currentColumns: number
 }
@@ -17,9 +19,9 @@ export interface Action {
 }
 
 export interface Block {
-  key: string
-  color: BlockColor
-  effect: BlockEffectType
+  key?: string
+  color: string
+  effect?: BlockEffectType
 }
 
 export enum BlockEffectType {
@@ -27,11 +29,8 @@ export enum BlockEffectType {
   SEMITRANSPARENT = '',
 }
 
-export enum BlockColor {
-  GREEN = '',
-  RED = '',
-  YELLOW = '',
-}
+/* Color classes */
+export const blockColors = ['color-1', 'color-2', 'color-3', 'color-4', 'color-4']
 
 /* Emulated enum for Piece type, since TS does not support object values in enum */
 export class PieceType {
@@ -56,15 +55,21 @@ export class PieceType {
     return this.key
   }
 
-  getInstance() {
+  getInstance(color: string): Piece {
     return {
       type: this,
       key: this.key,
       description: this.description,
-      blocks: this.blocks.map(row => row.map(col => col)),
+      blocks: this.getBlockPieceFromMatrix(color),
       currentRows: this.rows,
       currentColumns: this.columns,
     }
+  }
+
+  private getBlockPieceFromMatrix(color: string): Block[][] {
+    return this.blocks.map((row, rowIndex) => {
+      return row.map((col, colIndex) => (col ? {color} : (null as any)))
+    })
   }
 
   static values() {
@@ -87,6 +92,8 @@ export interface Position {
 
 export const createRandomPiece = (): Piece => {
   const randomPieceNumber0IndexBased = Math.floor((Math.random() * 10) % PieceType.values().length)
-  const randomPiece = PieceType.values()[randomPieceNumber0IndexBased].getInstance()
+  const randomColor0IndexBased = Math.floor((Math.random() * 10) % blockColors.length)
+  const randomPiece = PieceType.values()[randomPieceNumber0IndexBased].getInstance(blockColors[randomColor0IndexBased])
+  // debugger
   return randomPiece
 }

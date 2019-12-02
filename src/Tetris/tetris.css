@@ -1,0 +1,42 @@
+.block {
+  background-color: #fff;
+}
+
+.block.active {
+}
+
+.block.color-1 {
+  background-color: #587ff5;
+}
+.block.color-2 {
+  background-color: #1fafbf;
+}
+.block.color-3 {
+  background-color: #97bf04;
+}
+.block.color-4 {
+  background-color: #faaa73;
+}
+.block.color-5 {
+  background-color: #bf188f;
+}
+
+.game-over {
+  padding: 1rem;
+  background-color: #bf188f;
+  color: #fff;
+  text-align: center;
+  width: 100%;
+}
+
+.game-over .title {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+.new-game {
+  padding: 1rem;
+  background-color: #bf188f;
+  color: #fff;
+  text-align: center;
+  width: 100%;
+}
