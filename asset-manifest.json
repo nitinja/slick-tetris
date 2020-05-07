@@ -1,0 +1,25 @@
+{
+  "files": {
+    "main.css": "/slick-tetris/static/css/main.1af0724f.chunk.css",
+    "main.js": "/slick-tetris/static/js/main.2828aab5.chunk.js",
+    "main.js.map": "/slick-tetris/static/js/main.2828aab5.chunk.js.map",
+    "runtime-main.js": "/slick-tetris/static/js/runtime-main.62ad5ea3.js",
+    "runtime-main.js.map": "/slick-tetris/static/js/runtime-main.62ad5ea3.js.map",
+    "static/js/2.aa593617.chunk.js": "/slick-tetris/static/js/2.aa593617.chunk.js",
+    "static/js/2.aa593617.chunk.js.map": "/slick-tetris/static/js/2.aa593617.chunk.js.map",
+    "index.html": "/slick-tetris/index.html",
+    "precache-manifest.a3c640e0eb9288dba1c7a64f8d8831b8.js": "/slick-tetris/precache-manifest.a3c640e0eb9288dba1c7a64f8d8831b8.js",
+    "service-worker.js": "/slick-tetris/service-worker.js",
+    "static/css/main.1af0724f.chunk.css.map": "/slick-tetris/static/css/main.1af0724f.chunk.css.map",
+    "static/media/github.svg": "/slick-tetris/static/media/github.ddc25012.svg",
+    "static/media/noun_pause_170042.svg": "/slick-tetris/static/media/noun_pause_170042.ca1bcf06.svg",
+    "static/media/noun_play_170039.svg": "/slick-tetris/static/media/noun_play_170039.614647a2.svg",
+    "static/media/noun_restart_170019.svg": "/slick-tetris/static/media/noun_restart_170019.8311a56a.svg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.62ad5ea3.js",
+    "static/js/2.aa593617.chunk.js",
+    "static/css/main.1af0724f.chunk.css",
+    "static/js/main.2828aab5.chunk.js"
+  ]
+}
