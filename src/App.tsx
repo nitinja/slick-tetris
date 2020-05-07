@@ -3,6 +3,7 @@ import './App.css'
 import Tetris from './Tetris/Tetris'
 /** @jsx jsx */
 import {jsx} from '@emotion/core'
+import GithubImage from './assets/github.svg'
 
 const App: React.FC = () => {
   return (
@@ -25,7 +26,10 @@ const App: React.FC = () => {
           justifyContent: 'flex-end',
         }}
       >
-        SLICK TETRIS Beta 0.1
+        SLICK TETRIS Beta 0.1{' '}
+        <a href="https://github.com/nitinja/slick-tetris">
+          <img src={GithubImage} alt="Github Codebase" css={{width: '1rem', height: '1rem', margin: '0 1rem'}}></img>
+        </a>
       </div>
       <div css={{flex: 1}}>
         <Tetris rows={20} columns={10}></Tetris>

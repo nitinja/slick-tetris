@@ -2,6 +2,7 @@
   "name": "tetris",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://nitinja.github.io/slick-tetris/",
   "dependencies": {
     "@emotion/core": "^10.0.21",
     "@types/jest": "24.0.18",
@@ -18,7 +19,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "prettier": "prettier \"**/*.{js,ts,tsx,json,md,css,scss,yaml,yml}\""
+    "prettier": "prettier \"**/*.{js,ts,tsx,json,md,css,scss,yaml,yml}\"",
+    "predeploy": "yarn build",
+    "deploy": "gh-pages -d build"
   },
   "browserslist": {
     "production": [

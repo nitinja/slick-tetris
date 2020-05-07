@@ -10,6 +10,7 @@ import {TetrisPiece} from './TetrisPiece'
 import PauseImage from '../assets/noun_pause_170042.svg'
 import ResumeImage from '../assets/noun_play_170039.svg'
 import RestartImage from '../assets/noun_restart_170019.svg'
+import GithubImage from '../assets/github.svg'
 
 export const SCORE_MULTIPLICATION_FACTOR = 100
 
