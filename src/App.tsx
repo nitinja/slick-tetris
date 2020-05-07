@@ -37,7 +37,6 @@ const App: React.FC = () => {
       <div
         css={{
           color: '#ccc',
-          // borderTop: '1px solid #CCC',
           backgroundColor: '#eeeeee47',
           fontWeight: 'normal',
           padding: 4,

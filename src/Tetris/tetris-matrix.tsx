@@ -1,5 +1,5 @@
-import {useReducer, useCallback, useRef, useState} from 'react'
-import {Piece, Position, Action, Block} from '../models/model'
+import {useCallback, useReducer} from 'react'
+import {Action, Block, Piece, Position} from '../models/model'
 
 export interface MatrixState {
   blockMatrix: Block[][]
@@ -12,6 +12,7 @@ export interface MatrixState {
   eventHandlingInProgress: boolean
 }
 
+/* Reducer for matrix state */
 const reducer = (state: MatrixState, action: Action): MatrixState => {
   switch (action.type) {
     case 'ADD_PIECE':
@@ -134,6 +135,7 @@ const getEmptyMatrix = (rows: number, columns: number): Block[][] => {
   return new Array(rows).fill(0).map(() => new Array(columns).fill(null))
 }
 
+/* Combine provided matrices and return combined copy  */
 const getCombinedMatrix = (containerMatrix: Block[][], childMatrix: Block[][], position: Position): Block[][] => {
   const pieceMatrixRows = childMatrix.length,
     pieceMatrixColumns = childMatrix[0].length
@@ -165,10 +167,7 @@ const eraseCompletedLinesFromMatrix = (containerMatrix: Block[][]): Block[][] =>
 const getMatrixCopy = (containerMatrix: Block[][]) => containerMatrix.map(row => row.map(col => col))
 
 /* Custom Hook */
-
 export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixFullCallback = () => {}): any => {
-  // const initialState = useRef()
-
   //flag that current keypress event is getting processed, we cant process new events atm
   const [state, dispatch] = useReducer(reducer, null, () => ({
     blockMatrix: getEmptyMatrix(rows, columns),
@@ -212,7 +211,7 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
   )
 
   const moveCurrentPieceDown = useCallback((): boolean => {
-    // console.debug('moving piece down')
+    console.debug('moving piece down')
 
     /* If this is last row, or if there is no space below for this piece, return false i.e. fail*/
     if (state.eventHandlingInProgress || !state.activePiece) {
@@ -245,7 +244,7 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
 
   const addPiece = useCallback(
     (piece: Piece) => {
-      console.debug('in add piece..', piece)
+      console.debug('Adding piece: ', piece)
       const isThereSpaceAvailableForNewPiece = (piece: Piece): boolean => {
         const startColumn = piece.currentColumns === 3 || piece.currentColumns === 4 ? 4 : 5
         const endColumn = startColumn + piece.currentColumns

@@ -16,7 +16,6 @@ export function Overlay({startNewGame, gameState}: {startNewGame: () => void; ga
         width: '100%',
       }}
     >
-      {/* {JSON.stringify(gameState)} */}
       <div
         css={{
           color: '#000',

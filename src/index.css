@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'Pixelation';
-  src: url('/assets/Pixelation.ttf');
+  src: url('./assets/Pixelation.ttf');
 }
 
 body {

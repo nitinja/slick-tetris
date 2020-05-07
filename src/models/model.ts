@@ -1,3 +1,4 @@
+/* Various models used in app */
 export interface Piece {
   type: PieceType
   key: string
