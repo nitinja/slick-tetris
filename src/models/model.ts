@@ -94,6 +94,5 @@ export const createRandomPiece = (): Piece => {
   const randomPieceNumber0IndexBased = Math.floor((Math.random() * 10) % PieceType.values().length)
   const randomColor0IndexBased = Math.floor((Math.random() * 10) % blockColors.length)
   const randomPiece = PieceType.values()[randomPieceNumber0IndexBased].getInstance(blockColors[randomColor0IndexBased])
-  // debugger
   return randomPiece
 }

@@ -7,6 +7,9 @@ import './tetris.css'
 /** @jsx jsx */
 import {jsx} from '@emotion/core'
 import {TetrisPiece} from './TetrisPiece'
+import PauseImage from '../assets/noun_pause_170042.svg'
+import ResumeImage from '../assets/noun_play_170039.svg'
+import RestartImage from '../assets/noun_restart_170019.svg'
 
 export const SCORE_MULTIPLICATION_FACTOR = 100
 
@@ -32,15 +35,17 @@ const initialGameState = {
 }
 
 const reducer = (state: GameState, action: Action) => {
+  // console.debug('handling action: ', action.type)
   switch (action.type) {
     case 'START_NEW_GAME':
-      console.log('in start new game action handler')
+      //console.debug('in start new game action reducer case')
       return {
         ...state,
         isGameRunning: true,
         isGamePaused: false,
         isGameOver: false,
         timeElapsedSeconds: 0,
+        score: 0,
       }
     case 'PAUSE_GAME':
       return {
@@ -78,14 +83,24 @@ const reducer = (state: GameState, action: Action) => {
 }
 
 const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
-  /* Persistent time interval */
-  let timeInterval = useRef<any>()
+  /* Persistent interval for elapsed time */
+  // let timeInterval = useRef<any>()
+
+  /* Persistent interval for moving current piece down one step at a time */
+  // let pieceDropInterval = useRef<any>()
+
+  /* Piece Id */
   let pieceSequenceNumber = useRef<number>(0)
+
+  /* matrix board Full callback */
   const matrixFullCallback = useCallback(() => {
     dispatchGameState({type: 'GAME_OVER'})
-    if (timeInterval.current) {
-      clearInterval(timeInterval.current)
-    }
+    // if (timeInterval.current) {
+    //   clearInterval(timeInterval.current)
+    // }
+    // if (pieceDropInterval.current) {
+    //   clearInterval(pieceDropInterval.current)
+    // }
   }, [])
 
   const [gameState, dispatchGameState] = useReducer(reducer, initialGameState)
@@ -113,8 +128,7 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
     createRandomPiece(),
   ])
 
-  const addFrontBlockFromQueue = useCallback(() => {
-    // debugger
+  const requestNewPiece = useCallback(() => {
     const frontPieceFormQueue = randomPiecesQueue.pop()
     if (frontPieceFormQueue) {
       //assign a unique key to this new piece
@@ -128,53 +142,68 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
     // reset tetris matrix to initial state
     resetMatrix()
 
-    if (timeInterval.current) {
-      clearInterval(timeInterval.current)
-    }
-    timeInterval.current = setInterval(() => {
-      dispatchGameState({type: 'UPDATE_TIME'})
-    }, 1000)
-
     dispatchGameState({type: 'START_NEW_GAME'})
-    addFrontBlockFromQueue()
-  }, [addFrontBlockFromQueue, resetMatrix])
+  }, [resetMatrix])
 
-  useEffect(() => {
-    console.log('game now running: ' + gameState.isGameRunning)
-  }, [gameState.isGameRunning])
+  const togglePauseGame = useCallback(() => {
+    dispatchGameState({type: gameState.isGamePaused ? 'RESUME_GAME' : 'PAUSE_GAME'})
+  }, [gameState.isGamePaused])
 
   const onKeyDown = useCallback(
     (e: any) => {
       e.preventDefault()
-      // console.log('key pressed: ' + e.key)
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        // only handle arrow keys
-        if (e.key === 'ArrowLeft') {
-          moveCurrentPieceLeft()
-        }
-        if (e.key === 'ArrowRight') {
-          moveCurrentPieceRight()
-        }
-        if (e.key === 'ArrowDown') {
-          moveCurrentPieceDown()
-        }
-        if (e.key === 'ArrowUp' || e.key === 'space') {
-          rotatePiece()
-        }
+      // only handle arrow keys
+      if (gameState.isGamePaused) {
+        return
       }
+      switch (e.key) {
+        case 'ArrowLeft':
+          moveCurrentPieceLeft()
+          break
+        case 'ArrowRight':
+          moveCurrentPieceRight()
+          break
+        case 'ArrowDown':
+          moveCurrentPieceDown()
+          break
+        case 'ArrowUp':
+        case 'space':
+          rotatePiece()
+          break
+        default:
+          break
+      }
+
+      //}
     },
-    [moveCurrentPieceDown, moveCurrentPieceLeft, moveCurrentPieceRight, rotatePiece],
+    [gameState.isGamePaused, moveCurrentPieceDown, moveCurrentPieceLeft, moveCurrentPieceRight, rotatePiece],
   )
 
-  /* start timer to move current piece */
+  /* timer to move current piece */
   useEffect(() => {
-    const pieceDropInterval = setInterval(() => {
-      moveCurrentPieceDown()
-    }, 1000)
-    return () => {
-      clearInterval(pieceDropInterval)
+    if (gameState.isGameRunning) {
+      // piece down interval
+      const pieceDropInterval = setInterval(() => {
+        moveCurrentPieceDown()
+      }, 1000)
+      return () => {
+        clearInterval(pieceDropInterval)
+      }
     }
-  }, [moveCurrentPieceDown])
+  }, [gameState.isGameRunning, moveCurrentPieceDown])
+
+  /* timer to update time elapsed */
+  useEffect(() => {
+    if (gameState.isGameRunning) {
+      // piece down interval
+      const timeElapsedUpdatingInterval = setInterval(() => {
+        dispatchGameState({type: 'UPDATE_TIME'})
+      }, 1000)
+      return () => {
+        clearInterval(timeElapsedUpdatingInterval)
+      }
+    }
+  }, [gameState.isGameRunning])
 
   /* add key handler */
   useEffect(() => {
@@ -183,11 +212,13 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [onKeyDown])
+
   useEffect(() => {
-    if (state.readyForNewPiece && !state.matrixFull) {
-      addFrontBlockFromQueue()
+    if (state.readyForNewPiece) {
+      requestNewPiece()
     }
-  }, [addFrontBlockFromQueue, state.matrixFull, state.readyForNewPiece])
+  }, [requestNewPiece, state.readyForNewPiece])
+
   useEffect(() => {
     dispatchGameState({type: 'INCREMENT_SCORE_FOR_N_LINES', payload: state.completedRowsCount})
   }, [state.completedRowsCount])
@@ -207,6 +238,7 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
           width: '100%',
         }}
       >
+        {/* main output matrix area */}
         <div
           css={{
             display: 'grid',
@@ -225,6 +257,7 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
               )),
             )}
         </div>
+        {/* upcoming random pieces */}
         <div
           css={{
             // border: '1px solid #ccc',
@@ -235,7 +268,7 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
           }}
         >
           <div css={{display: 'flex', flexDirection: 'column-reverse', paddingTop: '1rem'}}>
-            {gameState.isGameRunning && randomPiecesQueue && (
+            {(gameState.isGameRunning || gameState.isGamePaused) && (
               <div>
                 <div css={{fontSize: '0.5rem', marginBottom: '1rem'}}>NEXT</div>
                 {randomPiecesQueue.map((piece, index) => (
@@ -244,12 +277,22 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
               </div>
             )}
           </div>
+          {/* restart and pause buttons */}
           <div css={{display: 'flex', flexDirection: 'column-reverse'}}>
-            <button css={{border: '1px solid #ccc', margin: '0.5rem'}}>
-              <img src="./assets/noun_restart_170019.svg" width="40" height="32" alt="pause" />
+            <button
+              css={{border: '1px solid #ccc', margin: '0.5rem'}}
+              title={gameState.isGamePaused ? 'Resume Game' : 'Pause Game'}
+              onClick={togglePauseGame}
+            >
+              <img
+                src={gameState.isGamePaused ? ResumeImage : PauseImage}
+                width="40"
+                height="32"
+                alt={gameState.isGamePaused ? 'Resume Game' : 'Pause Game'}
+              />
             </button>
-            <button css={{border: '1px solid #ccc', margin: '0.5rem'}}>
-              <img src="./assets/noun_pause_170042.svg" width="40" height="32" alt="restart" />
+            <button css={{border: '1px solid #ccc', margin: '0.5rem'}} title="Restart Game" onClick={startNewGame}>
+              <img src={RestartImage} width="40" height="32" alt="Restart Game" />
             </button>
           </div>
         </div>
@@ -263,9 +306,30 @@ const Tetris: React.FC<TetrisProps> = ({rows = 20, columns = 10}) => {
         )}
       </div>
 
-      <Overlay gameState={gameState} startNewGame={startNewGame} />
+      {/* paused block */}
+      <div
+        hidden={!gameState.isGamePaused}
+        css={{
+          marginBottom: '1rem',
+          position: 'absolute',
+          top: '50%',
+          left: 'calc(50% - 90px)',
+          padding: '1rem',
+          background: 'rgba(0,0,0,0.4)',
+          color: 'white',
+          fontSize: '1rem',
+        }}
+      >
+        PAUSED
+      </div>
 
-      <span style={{fontFamily: 'mono'}}>{JSON.stringify(gameState, null, 2)}</span>
+      {!gameState.isGameRunning && !gameState.isGamePaused && (
+        <div>
+          <Overlay gameState={gameState} startNewGame={startNewGame} />
+        </div>
+      )}
+
+      {/* <span style={{fontFamily: 'mono'}}>{JSON.stringify(gameState, null, 2)}</span> */}
     </div>
   )
 }

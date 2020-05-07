@@ -1,5 +1,10 @@
 import React from 'react'
-export function Time({timeElapsedSeconds}: {timeElapsedSeconds: number}) {
+/** @jsx jsx */
+import {jsx} from '@emotion/core'
+
+export const Time: React.FC<{timeElapsedSeconds: number}> = ({timeElapsedSeconds}) => {
+  const minutes = Math.floor(timeElapsedSeconds / 60)
+  const seconds = timeElapsedSeconds % 60
   return (
     <div
       css={{
@@ -9,7 +14,7 @@ export function Time({timeElapsedSeconds}: {timeElapsedSeconds: number}) {
         justifyContent: 'center',
       }}
     >
-      {`${Math.floor(timeElapsedSeconds / 60)}:${timeElapsedSeconds % 60}`}
+      {`${minutes}:${seconds}`} M
     </div>
   )
 }

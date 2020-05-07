@@ -1,4 +1,4 @@
-import {useReducer, useCallback, useRef} from 'react'
+import {useReducer, useCallback, useRef, useState} from 'react'
 import {Piece, Position, Action, Block} from '../models/model'
 
 export interface MatrixState {
@@ -9,6 +9,7 @@ export interface MatrixState {
   completedRowsCount: number
   readyForNewPiece: boolean
   matrixFull: boolean
+  eventHandlingInProgress: boolean
 }
 
 const reducer = (state: MatrixState, action: Action): MatrixState => {
@@ -43,6 +44,17 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
         currentOutputMatrix: mergedMatrix,
         readyForNewPiece: true,
         completedRowsCount: completedRows.length,
+        eventHandlingInProgress: false,
+      }
+    case 'LOCK_EVENT_HANDLING':
+      return {
+        ...state,
+        eventHandlingInProgress: true,
+      }
+    case 'UNLOCK_EVENT_HANDLING':
+      return {
+        ...state,
+        eventHandlingInProgress: false,
       }
     case 'MOVE_PIECE_TO_LEFT':
       const activePiecePositionLeft = {row: state.activePiecePosition.row, column: state.activePiecePosition.column - 1}
@@ -54,6 +66,7 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
           state.activePiece ? state.activePiece.blocks : [],
           activePiecePositionLeft,
         ),
+        eventHandlingInProgress: false,
       }
     case 'MOVE_PIECE_TO_RIGHT':
       const activePiecePositionRight = {
@@ -68,30 +81,34 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
           state.activePiece ? state.activePiece.blocks : [],
           activePiecePositionRight,
         ),
+        eventHandlingInProgress: false,
       }
     case 'MOVE_PIECE_DOWN':
-      const activePiecePositionDown = {row: state.activePiecePosition.row + 1, column: state.activePiecePosition.column}
+      if (!state.activePiece) {
+        return state
+      }
+      const newActivePiecePositionDown = {
+        row: state.activePiecePosition.row + 1,
+        column: state.activePiecePosition.column,
+      }
       return {
         ...state,
-        activePiecePosition: activePiecePositionDown,
-        currentOutputMatrix: getCombinedMatrix(
-          state.blockMatrix,
-          state.activePiece ? state.activePiece.blocks : [],
-          activePiecePositionDown,
-        ),
+        activePiecePosition: newActivePiecePositionDown,
+        currentOutputMatrix: getCombinedMatrix(state.blockMatrix, state.activePiece.blocks, newActivePiecePositionDown),
+        eventHandlingInProgress: false,
       }
     case 'MATRIX_FULL':
       return {
         ...state,
         activePiece: null,
         matrixFull: true,
+        readyForNewPiece: false,
       }
     case 'RESET_MATRIX':
       return {
         ...action.payload,
       }
     case 'ROTATE_PIECE':
-      // debugger
       const rotatedBlockMatrix = action.payload
       const activePiece = state.activePiece
         ? {
@@ -105,6 +122,7 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
         ...state,
         activePiece,
         currentOutputMatrix: getCombinedMatrix(state.blockMatrix, rotatedBlockMatrix, state.activePiecePosition),
+        eventHandlingInProgress: false,
       }
     default:
       return state
@@ -113,7 +131,7 @@ const reducer = (state: MatrixState, action: Action): MatrixState => {
 
 const getEmptyMatrix = (rows: number, columns: number): Block[][] => {
   //create empty matrix for Tetris game
-  return new Array(rows).fill(new Array(columns).fill(null))
+  return new Array(rows).fill(0).map(() => new Array(columns).fill(null))
 }
 
 const getCombinedMatrix = (containerMatrix: Block[][], childMatrix: Block[][], position: Position): Block[][] => {
@@ -123,6 +141,7 @@ const getCombinedMatrix = (containerMatrix: Block[][], childMatrix: Block[][], p
   const _containerMatrix = getMatrixCopy(containerMatrix)
   for (let pieceRow = 0; pieceRow < pieceMatrixRows; pieceRow++) {
     for (let pieceCol = 0; pieceCol < pieceMatrixColumns; pieceCol++) {
+      //bug
       _containerMatrix[position.row + pieceRow][position.column + pieceCol] =
         childMatrix[pieceRow][pieceCol] || _containerMatrix[position.row + pieceRow][position.column + pieceCol]
     }
@@ -132,7 +151,6 @@ const getCombinedMatrix = (containerMatrix: Block[][], childMatrix: Block[][], p
 
 const eraseCompletedLinesFromMatrix = (containerMatrix: Block[][]): Block[][] => {
   /* get all incomplete lines */
-  // debugger
   const incompleteLineMatrix = containerMatrix.filter(row => row.some(item => !item))
   if (incompleteLineMatrix.length < containerMatrix.length) {
     const linesToadd = containerMatrix.length - incompleteLineMatrix.length
@@ -149,7 +167,10 @@ const getMatrixCopy = (containerMatrix: Block[][]) => containerMatrix.map(row =>
 /* Custom Hook */
 
 export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixFullCallback = () => {}): any => {
-  const initialState = useRef({
+  // const initialState = useRef()
+
+  //flag that current keypress event is getting processed, we cant process new events atm
+  const [state, dispatch] = useReducer(reducer, null, () => ({
     blockMatrix: getEmptyMatrix(rows, columns),
     currentOutputMatrix: getEmptyMatrix(rows, columns),
     activePiece: undefined,
@@ -157,9 +178,8 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
     completedRowsCount: 0,
     matrixFull: false,
     readyForNewPiece: false,
-  })
-
-  const [state, dispatch] = useReducer(reducer, initialState.current)
+    eventHandlingInProgress: false,
+  }))
 
   const isThereSpaceForPieceBlock = useCallback(
     (pieceBlock: Block[][], position: Position) => {
@@ -192,27 +212,40 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
   )
 
   const moveCurrentPieceDown = useCallback((): boolean => {
+    // console.debug('moving piece down')
+
     /* If this is last row, or if there is no space below for this piece, return false i.e. fail*/
-    if (!state.activePiece) {
+    if (state.eventHandlingInProgress || !state.activePiece) {
       return false
     }
+    dispatch({type: 'LOCK_EVENT_HANDLING'})
 
     const newDesiredPosition: Position = {
       row: state.activePiecePosition.row + 1,
       column: state.activePiecePosition.column,
     }
     if (isThereSpaceForPieceBlock(state.activePiece.blocks, newDesiredPosition)) {
+      console.debug('spce down available')
+
       /* there is space available. Move piece down 1 line */
       dispatch({type: 'MOVE_PIECE_DOWN'})
     } else {
+      console.debug('no spce down available, merging now')
       /* If there is no space left below, combine piece with blockMatrix */
       dispatch({type: 'MERGE_PIECE_IN_MATRIX'})
     }
     return true
-  }, [isThereSpaceForPieceBlock, state.activePiece, state.activePiecePosition.column, state.activePiecePosition.row])
+  }, [
+    isThereSpaceForPieceBlock,
+    state.activePiece,
+    state.activePiecePosition.column,
+    state.activePiecePosition.row,
+    state.eventHandlingInProgress,
+  ])
 
   const addPiece = useCallback(
     (piece: Piece) => {
+      console.debug('in add piece..', piece)
       const isThereSpaceAvailableForNewPiece = (piece: Piece): boolean => {
         const startColumn = piece.currentColumns === 3 || piece.currentColumns === 4 ? 4 : 5
         const endColumn = startColumn + piece.currentColumns
@@ -226,7 +259,6 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
 
         return true
       }
-      // debugger
       if (isThereSpaceAvailableForNewPiece(piece)) {
         // add keys to block
         piece.blocks.forEach((row: Block[], rowIndex: number) => {
@@ -247,47 +279,69 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
     [matrixFullCallback, state.blockMatrix],
   )
 
-  const moveCurrentPieceLeft = () => {
+  const moveCurrentPieceLeft = useCallback(() => {
     /* If this is first column, return false i.e. fail*/
-    if (!state.activePiece || state.activePiecePosition.column === 0) {
+    if (!state.activePiece || state.activePiecePosition.column === 0 || state.eventHandlingInProgress) {
       return false
     }
+    dispatch({type: 'LOCK_EVENT_HANDLING'})
     // check if there is a space to left for this piece
     const columnToBeChecked = state.activePiecePosition.column - 1
     const pieceRowStart = state.activePiecePosition.row
     const pieceRowEnd = state.activePiecePosition.row + state.activePiece.currentRows - 1
     for (let row = pieceRowStart; row <= pieceRowEnd; row++) {
       if (state.blockMatrix[row][columnToBeChecked]) {
+        dispatch({type: 'UNLOCK_EVENT_HANDLING'})
         return false
       }
     }
     /* there is space available. Move piece to left 1 column */
     dispatch({type: 'MOVE_PIECE_TO_LEFT'})
-  }
+  }, [
+    state.activePiece,
+    state.activePiecePosition.column,
+    state.activePiecePosition.row,
+    state.blockMatrix,
+    state.eventHandlingInProgress,
+  ])
 
-  const moveCurrentPieceRight = () => {
+  const moveCurrentPieceRight = useCallback(() => {
     /* If this is last column, return false i.e. fail*/
-    if (!state.activePiece || state.activePiecePosition.column + state.activePiece.currentColumns >= columns) {
+    if (
+      state.eventHandlingInProgress ||
+      !state.activePiece ||
+      state.activePiecePosition.column + state.activePiece.currentColumns >= columns
+    ) {
       return false
     }
+    dispatch({type: 'LOCK_EVENT_HANDLING'})
     // check if there is a space to right for this piece
-    const columnToBeChecked = state.activePiecePosition.column + state.activePiece.currentColumns - 1
+    const columnToBeChecked = state.activePiecePosition.column + state.activePiece.currentColumns
     const pieceRowStart = state.activePiecePosition.row
     const pieceRowEnd = state.activePiecePosition.row + state.activePiece.currentRows - 1
     for (let row = pieceRowStart; row <= pieceRowEnd; row++) {
       if (state.blockMatrix[row][columnToBeChecked]) {
+        dispatch({type: 'UNLOCK_EVENT_HANDLING'})
         return false
       }
     }
 
     /* there is space available. Move piece to right 1 column */
     dispatch({type: 'MOVE_PIECE_TO_RIGHT'})
-  }
+  }, [
+    columns,
+    state.activePiece,
+    state.activePiecePosition.column,
+    state.activePiecePosition.row,
+    state.blockMatrix,
+    state.eventHandlingInProgress,
+  ])
 
-  const rotatePiece = () => {
-    if (!state.activePiece) {
+  const rotatePiece = useCallback(() => {
+    if (state.eventHandlingInProgress || !state.activePiece) {
       return false
     }
+    dispatch({type: 'LOCK_EVENT_HANDLING'})
 
     const matrix = state.activePiece.blocks || []
     // find a transpose of block matrix
@@ -296,11 +350,25 @@ export const useTetrisMatrix = (rows: number = 20, columns: number = 10, matrixF
     //check if there is a space for rotated piece
     if (isThereSpaceForPieceBlock(rotatedBlockMatrix, state.activePiecePosition)) {
       dispatch({type: 'ROTATE_PIECE', payload: rotatedBlockMatrix})
+    } else {
+      dispatch({type: 'UNLOCK_EVENT_HANDLING'})
     }
-  }
+  }, [isThereSpaceForPieceBlock, state.activePiece, state.activePiecePosition, state.eventHandlingInProgress])
 
   const resetMatrix = () => {
-    dispatch({type: 'RESET_MATRIX', payload: initialState.current})
+    dispatch({
+      type: 'RESET_MATRIX',
+      payload: {
+        blockMatrix: getEmptyMatrix(rows, columns),
+        currentOutputMatrix: getEmptyMatrix(rows, columns),
+        activePiece: undefined,
+        activePiecePosition: {row: 0, column: 0},
+        completedRowsCount: 0,
+        matrixFull: false,
+        readyForNewPiece: true,
+        eventHandlingInProgress: false,
+      },
+    })
   }
 
   return [state, addPiece, moveCurrentPieceLeft, moveCurrentPieceRight, moveCurrentPieceDown, rotatePiece, resetMatrix]

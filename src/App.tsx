@@ -25,10 +25,10 @@ const App: React.FC = () => {
           justifyContent: 'flex-end',
         }}
       >
-        SLICK TETRIS 0.1
+        SLICK TETRIS Beta 0.1
       </div>
       <div css={{flex: 1}}>
-        <Tetris rows={10} columns={10}></Tetris>
+        <Tetris rows={20} columns={10}></Tetris>
       </div>
       <div
         css={{
